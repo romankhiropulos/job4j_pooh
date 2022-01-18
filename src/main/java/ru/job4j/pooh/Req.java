@@ -18,8 +18,17 @@ public class Req {
     }
 
     public static Req of(String content) {
-        /* TODO parse a content */
-        return new Req(null, null, null, null);
+        String ls = System.lineSeparator();
+        String[] arrContent = content.split(ls);
+        String[] arrContentFirstLine = arrContent[0].split(" ");
+        String[] arrContentFirstLinePath = arrContentFirstLine[1].split("/");
+        String httpRequestType = arrContentFirstLine[0];
+        String poohMode = arrContentFirstLinePath[1];
+        String sourceName = arrContentFirstLinePath[2];
+        String param = "GET".equals(httpRequestType) ? arrContentFirstLinePath.length > 3 ? arrContentFirstLinePath[3]
+                                                                                          : ""
+                                                     : arrContent[arrContent.length - 1];
+        return new Req(httpRequestType, poohMode, sourceName, param);
     }
 
     public String httpRequestType() {
