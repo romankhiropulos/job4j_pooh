@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class TopicService implements Service {
 
     @GuardedBy("this")
-    private final Map<String, ConcurrentLinkedQueue<String>> map = new ConcurrentHashMap<>();
+    private final Map<String, ConcurrentHashMap<String, ConcurrentLinkedQueue<String>>> map = new ConcurrentHashMap<>();
 
     @Override
     public Resp process(Req req) {
@@ -20,18 +20,19 @@ public class TopicService implements Service {
         Resp resp;
         switch (req.httpRequestType()) {
             case "GET" -> {
-                text =  this.map.putIfAbsent(req.getParam(), new ConcurrentLinkedQueue<>()) == null
-                                ? ""
-                                : this.map.get(req.getParam()).poll();
-                resp = Objects.equals(text, "") ? new Resp(text, "204 No Content")
+                this.map.putIfAbsent(req.getSourceName(), new ConcurrentHashMap<>());
+                this.map.get(req.getSourceName()).putIfAbsent(req.getParam(), new ConcurrentLinkedQueue<>());
+                text = this.map.get(req.getSourceName()).get(req.getParam()).poll();
+                resp = Objects.equals(text, null) ? new Resp("", "204 No Content")
                         : new Resp(text, "200 OK");
             }
             case "POST" -> {
-                this.map.values().forEach(queue -> queue.add(req.getParam()));
-                resp = new Resp("New param inserted to queues!", "200 OK");
+                this.map.putIfAbsent(req.getSourceName(), new ConcurrentHashMap<>());
+                this.map.get(req.getSourceName()).values().forEach(queue -> queue.add(req.getParam()));
+                resp = new Resp("", "200 OK");
             }
             default -> {
-                resp = new Resp("Not Found!", "404, Not Found");
+                resp = new Resp("", "404, Not Found");
             }
         }
         return resp;

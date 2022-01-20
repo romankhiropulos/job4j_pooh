@@ -4,14 +4,14 @@ import net.jcip.annotations.GuardedBy;
 import net.jcip.annotations.ThreadSafe;
 
 import java.util.Objects;
-import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 @ThreadSafe
 public class QueueService implements Service {
 
     @GuardedBy("this")
-    private final Queue<String> queue = new ConcurrentLinkedQueue<>();
+    private final ConcurrentHashMap<String, ConcurrentLinkedQueue<String>> map = new ConcurrentHashMap<>();
 
     @Override
     public Resp process(Req req) {
@@ -19,16 +19,18 @@ public class QueueService implements Service {
         Resp resp;
         switch (req.httpRequestType()) {
             case "GET" -> {
-                text = this.queue.poll();
-                resp = Objects.equals(text, "") ? new Resp(text, "204 No Content")
+                this.map.putIfAbsent(req.getSourceName(), new ConcurrentLinkedQueue<>());
+                text = this.map.get(req.getSourceName()).poll();
+                resp = Objects.equals(text, null) ? new Resp("", "204 No Content")
                         : new Resp(text, "200 OK");
             }
             case "POST" -> {
-                this.queue.add(req.getParam());
-                resp = new Resp("New param inserted to queue!", "200 OK");
+                this.map.putIfAbsent(req.getSourceName(), new ConcurrentLinkedQueue<>());
+                this.map.get(req.getSourceName()).add(req.getParam());
+                resp = new Resp("", "200 OK");
             }
             default -> {
-                resp = new Resp("Not Found!", "404, Not Found");
+                resp = new Resp("", "404, Not Found");
             }
         }
         return resp;
